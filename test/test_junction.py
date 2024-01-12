@@ -6,7 +6,7 @@ import numpy as np
 #
 
 def testJunction():
-	output_path = '/gpfs/commons/groups/imielinski_lab/home/ieshghi/public_html/contact_junction_background/corigami_testing/'
+	output_path = '/gpfs/commons/home/ieshghi/public_html/contact_junction_background/corigami_testing/'
 	celltype = 'imr90' #model claims to be transferable, so let's try it
 	
 	# let's pick a junction we know exists in H526
@@ -26,4 +26,4 @@ def testJunction():
 	pred,seq,atac,ctcf = edit.simple_junction(output_path, celltype, left_segm_coords, right_segm_coords, model_path, seq_path, ctcf_path, atac_path)
 
 	np.savetxt(output_path+'some_pred.txt',pred)
-	print('saved')
+	print('saved2')
