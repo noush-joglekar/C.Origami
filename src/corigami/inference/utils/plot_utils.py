@@ -57,6 +57,54 @@ class MatrixPlot:
         plt.close()
         np.save(f'{self.save_path}/npy/{self.chr_name}_{self.start_pos}', self.image)
 
+#for plotting simple junctions as defined in editing.py
+#added by Iraj, m-ski lab, NYGC
+#
+#
+class MatrixPlotJunction(MatrixPlot):
+    def __init__(self, output_path, image, prefix, celltype, left_segm_coords, right_segm_coords, padding_type, show_deletion_line = False):
+        super().__init__(output_path, image, prefix, celltype, chr_name, start_pos)
+        self.deletion_start = deletion_start
+        self.deletion_width = deletion_width
+        self.show_deletion_line = show_deletion_line
+        self.padding_type = padding_type
+
+    def reformat_ticks(self, plt):
+        # Rescale tick labels
+        breakpoint_start = (self.deletion_start - self.start_pos) / 10000 
+        breakpoint_end = (self.deletion_start - self.start_pos + self.deletion_width) / 10000 
+        # Used for generating ticks until the end of the window
+        total_window_size = (self.deletion_width + 2097152 ) / 10000
+        # Generate ticks before and after breakpoint
+        before_ticks = np.arange(0, breakpoint_start - 50, 50) / 0.8192
+        after_ticks = (np.arange((breakpoint_end // 50 + 2) * 50, total_window_size, 50) - self.deletion_width / 10000) / 0.8192
+        breakpoint_locus = breakpoint_start / 0.8192
+        # Actual coordinates for each tick
+        current_ticks = np.append(before_ticks, after_ticks)
+        current_ticks = np.append(current_ticks, breakpoint_start / 0.8192)
+        # Genomic coordinates used for display location after deletion
+        display_ticks = np.append(before_ticks, after_ticks + self.deletion_width / 10000 / 0.8192)
+        display_ticks = np.append(display_ticks, breakpoint_start / 0.8192)
+        if self.show_deletion_line:
+            plt.axline((breakpoint_locus, 0), (breakpoint_locus, 209), c = 'black', alpha = 0.5)
+            plt.axline((0, breakpoint_locus), (209, breakpoint_locus), c = 'black', alpha = 0.5)
+        # Generate tick label text
+        ticks_label = self.rescale_coordinates(display_ticks, self.start_pos)
+        plt.yticks(current_ticks, ticks_label)
+        ticks_label[-1] = f"{(self.deletion_start / 1000000):.2f}({(self.deletion_start + self.deletion_width) / 1000000:.2f})"
+        plt.xticks(current_ticks, ticks_label)
+        # Format labels
+        plt.ylabel('Genomic position (Mb)')
+        end_pos = self.start_pos + 2097152 + self.deletion_width
+        plt.xlabel(f'Chr{self.chr_name.replace("chr", "")}: {self.start_pos} - {self.deletion_start} and {self.deletion_start + self.deletion_width} - {end_pos} ')
+        self.save_data(plt)
+
+    def save_data(self, plt):
+        plt.savefig(f'{self.save_path}/imgs/{self.chr_name}_{self.start_pos}_del_{self.deletion_start}_{self.deletion_width}_padding_{self.padding_type}.png', bbox_inches = 'tight')
+        plt.close()
+        np.save(f'{self.save_path}/npy/{self.chr_name}_{self.start_pos}_del_{self.deletion_start}_{self.deletion_width}_padding_{self.padding_type}', self.image)
+
+
 class MatrixPlotDeletion(MatrixPlot):
     def __init__(self, output_path, image, prefix, celltype, chr_name, start_pos, deletion_start, deletion_width, padding_type, show_deletion_line = False):
         super().__init__(output_path, image, prefix, celltype, chr_name, start_pos)
