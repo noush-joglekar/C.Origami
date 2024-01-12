@@ -99,6 +99,80 @@ def delete(start, end, seq, ctcf, atac, window = 2097152):
     atac = np.delete(atac, np.s_[start:end])
     return seq[:window], ctcf[:window], atac[:window]
 
+# Addition of a simple junction between two chromosomes
+# Edited by: Iraj , m-ski lab
+#
+
+def simple_junction(output_path, celltype, left_segm_coords, right_segm_coords, model_path, seq_path, ctcf_path, atac_path, show_deletion_line = True, padding_type = 'zero', bp_loc_in_window = None):
+# new parameters are:
+#	left_segm_coords = [chromosome number, orientation, breakpoint] 
+#	right_segm_coords = [chromosome number, orientation, breakpoint] 
+# 	bp_loc_in_window: location of the breakpoint in the simulation window. If None, the window is centered at the breakpoint. Otherwise, a floating-point number between 0 and 1 gives the fractional location along the window
+	if bp_loc_in_window is None:
+		bp_loc_in_window = 0.5
+
+	assert isinstance(bp_loc_in_window,float) and bp_loc_in_window >=0 and bp_loc_in_window <=1
+# 
+# Orientations are either +1 or -1
+# For the "left" segment: if the orientation is +1, the segment goes from coordinate 1 to breakpoint. Otherwise, the segment goes from breakpoint to the "end" of the chromosome
+# For the "right" segment: if the orientation is +1, the segment goes from breakpoint to the "end" of the chromosome. Otherwise, the segment goes from coordinate 1 to the breakpoint
+#
+# 
+# The other parameters function identically as in the function single_deletion() above
+
+	left_chr_name = 'chr'+ str(left_segm_coords[0])
+	right_chr_name = 'chr'+ str(right_segm_coords[0])
+
+
+    # Define window which accomodates SV
+	window = 2097152 #this is hard-coded into the model...? might need to add a layer if using a different window size
+	left_length = int(bp_loc_in_window*window)
+	right_length = window - left_length #guarantees that the resulting snippet of sequence is the right length
+
+	# get the sequences for the left side of the breakpoint, flip if necessary
+	left_breakpoint = left_segm_coords[2]
+	right_breakpoint = right_segm_coords[2]
+	assert (left_segm_coords[1] in [1,-1]) and (right_segm_coords[1] in [1,-1])
+	if left_segm_coords[1] == 1: #if orientation = +1, left segment spans [breakpoint - left_length , breakpoint]
+	    seq_left, ctcf_left, atac_left = infer.load_region(left_chr_name, left_breakpoint - left_length, seq_path, ctcf_path, atac_path, window = left_length)
+	else: #if orientation is -1, left segment goes [breakpoint, breakpoint + left_length] and is then inverted
+		seq_left, ctcf_left, atac_left = infer.load_region(left_chr_name, left_breakpoint, seq_path, ctcf_path, atac_path, window = left_length)
+		#now we must invert the sequences
+		seq_left = np.flip(seq_left,0).copy()
+		atac_left = np.flip(atac_left,0).copy()
+		ctcf_left = np.flip(ctcf_left,0).copy()
+
+	# same but opposite on the right side
+	if right_segm_coords[1] == 1:#if orientation = +1, right segment spans [breakpoint, breakpoint + right_length]
+	    seq_right, ctcf_right, atac_right = infer.load_region(right_chr_name, right_breakpoint, seq_path, ctcf_path, atac_path, window = right_length)
+	else: #if orientation = -1, right segment spans [breakpoint-right_length, breakpoint] and is then inverted
+		seq_right, ctcf_right, atac_right = infer.load_region(right_chr_name, right_breakpoint - right_length, seq_path, ctcf_path, atac_path, window = right_length)
+		#now we invert the sequences
+		seq_right = np.flip(seq_right,0).copy()
+		atac_right = np.flip(atac_right,0).copy()
+		ctcf_right = np.flip(ctcf_right,0).copy()
+
+	#splice the inputs
+	seq_region = np.concatenate((seq_left,seq_right))
+	atac_region = np.concatenate((atac_left,atac_right))
+	ctcf_region = np.concatenate((ctcf_left,ctcf_right))
+		
+    # Prediction
+	pred = infer.prediction(seq_region, ctcf_region, atac_region, model_path)
+
+	plot = plot_utils.MatrixPlot(output_path, pred, 'junction', celltype, 
+                                 left_chr_name + '-' + right_chr_name, left_breakpoint-left_length)
+	plot.plot()
+
+    # Initialize plotting class
+	#plot = plot_utils.MatrixPlotDeletion(output_path, pred, 'Junction', 
+	#	celltype, chr_name, start, deletion_start, deletion_width, 
+	#	padding_type = end_padding_type,
+	#	show_deletion_line = show_deletion_line)
+	#plot.plot()
+
+	return pred,seq_region,atac_region,ctcf_region
+
 if __name__ == '__main__':
     main()
 
