@@ -99,11 +99,11 @@ def delete(start, end, seq, ctcf, atac, window = 2097152):
     atac = np.delete(atac, np.s_[start:end])
     return seq[:window], ctcf[:window], atac[:window]
 
-# Addition of a simple junction between two chromosomes
-# Edited by: Iraj , m-ski lab
+# A simple junction between two chromosomes
+# Added by: Iraj , m-ski lab
 #
 
-def simple_junction(output_path, celltype, left_segm_coords, right_segm_coords, model_path, seq_path, ctcf_path, atac_path, show_deletion_line = True, padding_type = 'zero', bp_loc_in_window = None):
+def simple_junction(output_path, celltype, left_segm_coords, right_segm_coords, model_path, seq_path, ctcf_path, atac_path, show_deletion_line = True, bp_loc_in_window = None, ifplot = True):
 # new parameters are:
 #	left_segm_coords = [chromosome number, orientation, breakpoint] 
 #	right_segm_coords = [chromosome number, orientation, breakpoint] 
@@ -123,7 +123,6 @@ def simple_junction(output_path, celltype, left_segm_coords, right_segm_coords, 
 	left_chr_name = 'chr'+ str(left_segm_coords[0])
 	right_chr_name = 'chr'+ str(right_segm_coords[0])
 
-
     # Define window which accomodates SV
 	window = 2097152 #this is hard-coded into the model...? might need to add a layer if using a different window size
 	left_length = int(bp_loc_in_window*window)
@@ -134,7 +133,7 @@ def simple_junction(output_path, celltype, left_segm_coords, right_segm_coords, 
 	right_breakpoint = right_segm_coords[2]
 	assert (left_segm_coords[1] in [1,-1]) and (right_segm_coords[1] in [1,-1])
 	if left_segm_coords[1] == 1: #if orientation = +1, left segment spans [breakpoint - left_length , breakpoint]
-	    seq_left, ctcf_left, atac_left = infer.load_region(left_chr_name, left_breakpoint - left_length, seq_path, ctcf_path, atac_path, window = left_length)
+		seq_left, ctcf_left, atac_left = infer.load_region(left_chr_name, left_breakpoint - left_length, seq_path, ctcf_path, atac_path, window = left_length)
 	else: #if orientation is -1, left segment goes [breakpoint, breakpoint + left_length] and is then inverted
 		seq_left, ctcf_left, atac_left = infer.load_region(left_chr_name, left_breakpoint, seq_path, ctcf_path, atac_path, window = left_length)
 		#now we must invert the sequences
@@ -144,7 +143,7 @@ def simple_junction(output_path, celltype, left_segm_coords, right_segm_coords, 
 
 	# same but opposite on the right side
 	if right_segm_coords[1] == 1:#if orientation = +1, right segment spans [breakpoint, breakpoint + right_length]
-	    seq_right, ctcf_right, atac_right = infer.load_region(right_chr_name, right_breakpoint, seq_path, ctcf_path, atac_path, window = right_length)
+		seq_right, ctcf_right, atac_right = infer.load_region(right_chr_name, right_breakpoint, seq_path, ctcf_path, atac_path, window = right_length)
 	else: #if orientation = -1, right segment spans [breakpoint-right_length, breakpoint] and is then inverted
 		seq_right, ctcf_right, atac_right = infer.load_region(right_chr_name, right_breakpoint - right_length, seq_path, ctcf_path, atac_path, window = right_length)
 		#now we invert the sequences
@@ -157,21 +156,18 @@ def simple_junction(output_path, celltype, left_segm_coords, right_segm_coords, 
 	atac_region = np.concatenate((atac_left,atac_right))
 	ctcf_region = np.concatenate((ctcf_left,ctcf_right))
 		
-    # Prediction
+    	#prediction
 	pred = infer.prediction(seq_region, ctcf_region, atac_region, model_path)
 
-	plot = plot_utils.MatrixPlot(output_path, pred, 'junction', celltype, 
-                                 left_chr_name + '-' + right_chr_name, left_breakpoint-left_length)
+#	plot = plot_utils.MatrixPlot(output_path, pred, 'simple_junction', celltype, 
+#                                 left_chr_name + '-' + right_chr_name, left_breakpoint-left_length)
+	plot = plot_utils.MatrixPlotJunction(output_path, pred, 'simple_junction', celltype, 
+                                 left_segm_coords,right_segm_coords)
+	#we made our own plotting function. does it work?
+
 	plot.plot()
 
-    # Initialize plotting class
-	#plot = plot_utils.MatrixPlotDeletion(output_path, pred, 'Junction', 
-	#	celltype, chr_name, start, deletion_start, deletion_width, 
-	#	padding_type = end_padding_type,
-	#	show_deletion_line = show_deletion_line)
-	#plot.plot()
-
-	return pred,seq_region,atac_region,ctcf_region
+	return pred
 
 if __name__ == '__main__':
     main()
