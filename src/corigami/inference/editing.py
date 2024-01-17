@@ -162,7 +162,7 @@ def simple_junction(output_path, celltype, left_segm_coords, right_segm_coords, 
 #	plot = plot_utils.MatrixPlot(output_path, pred, 'simple_junction', celltype, 
 #                                 left_chr_name + '-' + right_chr_name, left_breakpoint-left_length)
 	plot = plot_utils.MatrixPlotJunction(output_path, pred, 'simple_junction', celltype, 
-                                 left_segm_coords,right_segm_coords)
+                                 left_segm_coords,right_segm_coords,bp_loc_in_window)
 	#we made our own plotting function. does it work?
 
 	plot.plot()

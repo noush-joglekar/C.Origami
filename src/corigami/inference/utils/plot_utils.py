@@ -62,77 +62,65 @@ class MatrixPlot:
 #
 #
 class MatrixPlotJunction(MatrixPlot):
-    def __init__(self, output_path, image, prefix, celltype, left_segm_coords, right_segm_coords, bp_loc_in_window):
-	chr_name = 'chr'+str(left_segm_coords[0])+'-chr'+str(right_segm_coords[0])	
-        super().__init__(output_path, image, prefix, celltype, chr_name, start_pos):
-	self.bp_loc_in_window = bp_loc_in_window
-        self.left_segm_coords = left_segm_coords
-        self.right_segm_coords = right_segm_coords
-        self.show_deletion_line = show_deletion_line
-        self.padding_type = padding_type
+	def __init__(self, output_path, image, prefix, celltype, left_segm_coords, right_segm_coords, bp_loc_in_window,show_line = True):
+		chr_name = 'chr'+str(left_segm_coords[0])+'-chr'+str(right_segm_coords[0])	
+		start_pos = 0
+		super().__init__(output_path, image, prefix, celltype, chr_name, start_pos)
+		self.bp_loc_in_window = bp_loc_in_window
+		self.left_segm_coords = left_segm_coords
+		self.right_segm_coords = right_segm_coords
+		self.show_line = show_line
 
-    def reformat_ticks(self, plt):
+	def reformat_ticks(self, plt):
 	# we have a hi-c map which is showing contacts on a "neo-chromosome", a splice of two existing chromosomes. We should put a line at the location of the breakpoint (as before) and label the ticks with the locations on the two chromosomes... what if the chromosomes are flipped??
 
 	#conventions & constants
-	window = 2097152 #frustrating that this needs to be hard-coded into every function...
-	rescaleval = 10000 #they seem to have settled on measuring things in units of 10kb
-	somefloat = 0.8192 #seems like previous authors settled on this number for some reason
-	tickspacing = 50
+		window = 2097152 #frustrating that this needs to be hard-coded into every function...
+		rescaleval = 10000 #they seem to have settled on measuring things in units of 10kb
+		mb = 1e6 #a megabase
+		somefloat = 0.8192 #seems like previous authors settled on this number for some reason
+		tickspacing = 50
+		window_2 = window/rescaleval #window in the new units
+		bploc = self.bp_loc_in_window
 
-	left_length = (int(self.bp_loc_in_window*window))/rescaleval
-	right_length = window/rescaleval - left_length
+		left_bp = self.left_segm_coords[2]
+		right_bp = self.right_segm_coords[2]
+		left_or = self.left_segm_coords[1]
+		right_or = self.right_segm_coords[1]
+		left_chr = str(self.left_segm_coords[0])
+		right_chr = str(self.right_segm_coords[0])
+		
+		left_lims = [left_bp/mb - left_or*window*bploc/mb,left_bp/mb][::left_or]
+		right_lims = [right_bp/mb,right_bp/mb + right_or*window*(1-bploc)/mb][::right_or]
 
-	left_orient = self.left_segm_coords[1]
-	right_orient = self.right_segm_coords[1]
-	left_bp = self.left_segm_coords[2]/rescaleval
-	right_bp = self.right_segm_coords[2]/rescaleval
-	
-	assert (left_orient in [1,-1]) and (right_orient in [1,-1])
+		# general rationale: we have a breakpoint (which is by default centered in the simulated hi-c image). In general each side of the breakpoint is a different chromosome, and the whole width of the window is ~2Mb. Let's put ticks at each half megabase (equivalent to tickspacing = 50 since the units are in 10kb), so we should get max 4 ticks on the image. If the breakpoint is centered, we get two ticks on each side
 
-	if left_orient == 1:
-		left_ticks = np.arange(left_bp-left_length,left_bp,tickspacing)/somefloat
-	else
-		left_ticks = np.arange(left_bp,left_bp+left_length,tickspacing)[::-1]/somefloat
+		breakpoint_locus = window*bploc/(somefloat*rescaleval) # position of the breakpoint in the window in units of 50kb
+		if self.show_line:
+		    plt.axline((breakpoint_locus, 0), (breakpoint_locus, 209), c = 'black', ls = '--', alpha = 0.5)
+		    plt.axline((0, breakpoint_locus), (209, breakpoint_locus), c = 'black', ls = '--', alpha = 0.5)
 
-	if right_orient == 1:
-		right_ticks = np.arange(right_bp,right_bp+right_length,tickspacing)/somefloat
-	else
-		right_ticks = np.arange(right_bp-right_length,right_bp,tickspacing)[::-1]/somefloat
+		n_leftticks = int(window*bploc/(rescaleval*tickspacing)) #number of ticks to the left of the breakpoint
+		n_rightticks = int(window*(1-bploc)/(rescaleval*tickspacing)) #number of ticks to the right of the breakpoint
 
-        # Rescale tick labels
-	breakpoint_start = (self.deletion_start - self.start_pos) / 10000 
-	breakpoint_end = (self.deletion_start - self.start_pos + self.deletion_width) / 10000 
-        # Used for generating ticks until the end of the window
-	total_window_size = window / 10000
-        # Generate ticks before and after breakpoint
-	before_ticks = np.arange(0, breakpoint_start - 50, 50) / somefloat
-	after_ticks = (np.arange((breakpoint_end // 50 + 2) * 50, total_window_size, 50) - self.deletion_width / 10000) / 0.8192
-	breakpoint_locus = breakpoint_start / 0.8192
-	# Actual coordinates for each tick
-	current_ticks = np.append(before_ticks, after_ticks)
-	current_ticks = np.append(current_ticks, breakpoint_start / 0.8192)
-	# Genomic coordinates used for display location after deletion
-	display_ticks = np.append(before_ticks, after_ticks + self.deletion_width / 10000 / 0.8192)
-	display_ticks = np.append(display_ticks, breakpoint_start / 0.8192)
-	if self.show_deletion_line:
-	    plt.axline((breakpoint_locus, 0), (breakpoint_locus, 209), c = 'black', alpha = 0.5)
-	    plt.axline((0, breakpoint_locus), (209, breakpoint_locus), c = 'black', alpha = 0.5)
-	# Generate tick label text
-	ticks_label = self.rescale_coordinates(display_ticks, self.start_pos)
-	plt.yticks(current_ticks, ticks_label)
-	ticks_label[-1] = f"{(self.deletion_start / 1000000):.2f}({(self.deletion_start + self.deletion_width) / 1000000:.2f})"
-	plt.xticks(current_ticks, ticks_label)
-	# Format labels
-	plt.ylabel('Genomic position (Mb)')
-	end_pos = self.start_pos + 2097152 + self.deletion_width
-	plt.xlabel(f'Chr{self.chr_name.replace("chr", "")}: {self.start_pos} - {self.deletion_start} and {self.deletion_start + self.deletion_width} - {end_pos} ')
-	self.save_data(plt)
+		display_ticks = [breakpoint_locus - i*tickspacing/somefloat for i in range(1,1+n_leftticks)][::-1] + [breakpoint_locus] + [breakpoint_locus + i*tickspacing/somefloat for i in range(1,1+n_rightticks)] # a bit verbose, but this generates the right tick locations (50kb apart, going left and right from the breakpoint which is at the location prescribed by bploc). Now we have to figure out the actual positions of these ticks on the respective chromosomes
 
-    def save_data(self, plt):
-        plt.savefig(f'{self.save_path}/imgs/{self.chr_name}_{self.start_pos}_del_{self.deletion_start}_{self.deletion_width}_padding_{self.padding_type}.png', bbox_inches = 'tight')
-        plt.close()
-        np.save(f'{self.save_path}/npy/{self.chr_name}_{self.start_pos}_del_{self.deletion_start}_{self.deletion_width}_padding_{self.padding_type}', self.image)
+		left_labels = [left_bp/mb - (left_or*i*rescaleval*tickspacing)/mb for i in range(1,1+n_leftticks)][::left_or]
+		right_labels = [right_bp/mb + (right_or*i*rescaleval*tickspacing)/mb for i in range(1,1+n_rightticks)][::right_or]
+
+		ticklabels = left_labels + ['BP'] + right_labels
+
+		plt.yticks(display_ticks,ticklabels)
+		plt.xticks(display_ticks,ticklabels)
+		plt.xlabel(f'Chr{left_chr}: {left_lims[0]} - {left_lims[1]} and Chr{right_chr}: {right_lims[0]}- {right_lims[1]}')
+		plt.ylabel('Genomic position (Mb)')
+
+		self.save_data(plt)
+
+	def save_data(self, plt):
+        	plt.savefig(f'{self.save_path}/imgs/{self.chr_name}_{self.left_segm_coords[2]}_junc_{self.right_segm_coords[2]}.png', bbox_inches = 'tight')
+        	plt.close()
+        	np.save(f'{self.save_path}/npy/{self.chr_name}_{self.left_segm_coords[2]}_junc_{self.right_segm_coords[2]}.png', self.image)
 
 
 class MatrixPlotDeletion(MatrixPlot):

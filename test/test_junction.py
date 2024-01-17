@@ -23,4 +23,4 @@ def testJunction():
 	ctcf_path = project_folder + 'corigami_data/data/hg38/imr90/genomic_features/ctcf_log2fc.bw'
 	atac_path = project_folder + 'corigami_data/data/hg38/imr90/genomic_features/atac.bw'
 	
-	pred,seq,atac,ctcf = edit.simple_junction(output_path, celltype, left_segm_coords, right_segm_coords, model_path, seq_path, ctcf_path, atac_path)
+	pred = edit.simple_junction(output_path, celltype, left_segm_coords, right_segm_coords, model_path, seq_path, ctcf_path, atac_path)
