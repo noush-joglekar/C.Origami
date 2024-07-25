@@ -29,14 +29,18 @@ def main():
                       args.model_path, 
                       args.seq_path, args.ctcf_path, args.atac_path)
 
-def single_prediction(output_path, celltype, chr_name, start, model_path, seq_path, ctcf_path, atac_path):
+def single_prediction(output_path, celltype, chr_name, start, model_path, seq_path, ctcf_path, atac_path,ifplot = True):
     seq_region, ctcf_region, atac_region = infer.load_region(chr_name, 
             start, seq_path, ctcf_path, atac_path)
     pred = infer.prediction(seq_region, ctcf_region, atac_region, 
                                    model_path)
-    plot = plot_utils.MatrixPlot(output_path, pred, 'prediction', celltype, 
-                                 chr_name, start)
-    plot.plot()
+
+    if ifplot:
+	    plot = plot_utils.MatrixPlot(output_path, pred, 'prediction', celltype, 
+	                                 chr_name, start)
+	    plot.plot()
+
+    return pred
 
 if __name__ == '__main__':
     main()
