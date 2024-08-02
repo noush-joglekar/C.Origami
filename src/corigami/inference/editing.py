@@ -33,11 +33,12 @@ def main():
     parser.add_argument('--atac', dest='atac_path', 
                         help='Path to the folder where the ATAC-seq .bw files are stored', required=True)
 
-    # Deletion related params
-    parser.add_argument('--del-start', dest='deletion_start', type=int,
-                        help='Starting point for deletion.', required=True)
-    parser.add_argument('--del-width', dest='deletion_width', type=int,
-                        help='Width for deletion.', required=True)
+    # Deletion related params.
+    # Noush - making them generalizable for SVs
+    parser.add_argument('--svBlock-start', dest='sv_start', type=int,
+                        help='Starting point for deletion or insertion block on diff chrom.', required=True)
+    parser.add_argument('--svBlock-width', dest='sv_width', type=int,
+                        help='Width for deletion or insertion', required=True)
     parser.add_argument('--padding', dest='end_padding_type', 
                         default='zero',
                         help='Padding type, either zero or follow. Using zero: the missing region at the end will be padded with zero for ctcf and atac seq, while sequence will be padded with N (unknown necleotide). Using follow: the end will be padded with features in the following region (default: %(default)s)')
@@ -47,14 +48,14 @@ def main():
 
     parser.add_argument('--sv-type', dest='sv_type', type=str, default="deletion")
     # Insertion related params
-    parser.add_argument('--insertion-site',dest='ins_site', type=int)
+    parser.add_argument('--insertion-source-start',dest='ins_site', type=int) ### SWITCH THIS WITH DELETION_START
     parser.add_argument('--insertion-source-chrom', dest='ins_chrom')
 
     args = parser.parse_args(args=None if sys.argv[1:] else ['--help'])
 
     if args.sv_type.lower() == "deletion":
         single_deletion(args.output_path, args.celltype, args.chr_name, args.start, 
-                        args.deletion_start, args.deletion_width, 
+                        args.sv_start, args.sv_width, 
                         args.model_path,
                         args.seq_path, args.ctcf_path, args.atac_path, 
                         show_deletion_line = not args.hide_deletion_line,
@@ -62,7 +63,7 @@ def main():
     if args.sv_type.lower() == "insertion":
         print("Insertion selected ... ")
         single_insertion(args.output_path, args.celltype, args.chr_name, args.start, 
-                        args.deletion_start, args.deletion_width, 
+                        args.sv_start, args.sv_width, 
                         args.model_path,
                         args.seq_path, args.ctcf_path, args.atac_path,
                         args.ins_site, args.ins_chrom,
@@ -116,14 +117,14 @@ def delete(start, end, seq, ctcf, atac, window = 2097152):
     return seq[:window], ctcf[:window], atac[:window]
 
 
-def single_insertion(output_path, celltype, chr_name, start, deletion_start, deletion_width, model_path, seq_path, ctcf_path, atac_path, 
+def single_insertion(output_path, celltype, chr_name, start, insertion_start, insertion_width, model_path, seq_path, ctcf_path, atac_path, 
 ins_site, ins_chrom, show_deletion_line = True, end_padding_type = 'zero'):
     """Replace deletion with insertion. Just add an extra parameter detailing which function to call. Should be equivalent otherwise"""
-    window = 2097152 - deletion_width ## carrying over. i think it has to do with bits.
+    window = 2097152 - insertion_width ## carrying over. i think it has to do with bits.
     hWindow = window // 2
-    left_edge = ins_site - (deletion_width // 2 ) - hWindow ## not sure if this works. we'll see
-    right_edge = ins_site + (deletion_width // 2 ) + hWindow
-    ins_seq, ins_ctcf, ins_atac = infer.load_region(ins_chrom, deletion_start, seq_path, ctcf_path, atac_path, window = deletion_width)
+    left_edge = insertion_start - (insertion_width // 2 ) - hWindow ## not sure if this works. we'll see
+    right_edge = insertion_start + (insertion_width // 2 ) + hWindow
+    ins_seq, ins_ctcf, ins_atac = infer.load_region(ins_chrom, ins_site, seq_path, ctcf_path, atac_path, window = insertion_width)
     left_seq, left_ctcf, left_atac = infer.load_region(chr_name, left_edge, seq_path, ctcf_path, atac_path, window=hWindow)
     right_seq, right_ctcf, right_atac = infer.load_region(chr_name, right_edge, seq_path, ctcf_path, atac_path, window=hWindow)
 
@@ -137,7 +138,7 @@ ins_site, ins_chrom, show_deletion_line = True, end_padding_type = 'zero'):
     print("Insertion stuff done ... plotting now")
     # # Initialize plotting class
     plot = plot_utils.MatrixPlotInsertion(output_path, pred, 'insertion', 
-            celltype, chr_name, start, ins_site, deletion_width, ins_chrom,
+            celltype, chr_name, start, insertion_start, insertion_width, ins_chrom,
             padding_type = end_padding_type,
             show_deletion_line = show_deletion_line)
     
