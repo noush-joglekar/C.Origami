@@ -140,24 +140,20 @@ class MatrixPlotInsertion(MatrixPlot):
         self.ins_chrom = ins_chrom
 
     def reformat_ticks(self, plt):
+        """Noush: not fully sure how this is working but seems to be."""
         # Rescale tick labels
         breakpoint_start = (self.insertion_start - self.start_pos) / 10000 
         breakpoint_end = (self.insertion_start - self.start_pos + self.insertion_width) / 10000 
-        print(f'Breakpoints = {breakpoint_start}, {breakpoint_end}')
 
         # Used for generating ticks until the end of the window
         total_window_size = (self.insertion_width + 2097152 ) / 10000
 
         # Generate ticks before and after breakpoints
         before_ticks = np.arange(0, breakpoint_start - 50, 50) / 0.8192
-        print(f'Before ticks = {before_ticks}')
         after_ticks = (np.arange((breakpoint_end // 50 + 2) * 50, total_window_size, 50) - self.insertion_width / 10000) / 0.8192
-        print(f'After ticks = {after_ticks}')
 
         breakpoint_locus_left = breakpoint_start / 0.8192
         breakpoint_locus_right = breakpoint_end / 0.8192
-
-        print(f"Left and right locus: {breakpoint_locus_left}, {breakpoint_locus_right}")
         
         # Actual coordinates for each tick
         current_ticks = np.append(before_ticks, after_ticks)
@@ -169,8 +165,8 @@ class MatrixPlotInsertion(MatrixPlot):
         if self.show_insertion_lines:
             plt.axline((breakpoint_locus_left, 0), (breakpoint_locus_left, 209), c = 'blue', alpha = 0.5)
             plt.axline((0, breakpoint_locus_left), (209, breakpoint_locus_left), c = 'blue', alpha = 0.5)
-            plt.axline((breakpoint_locus_right, 0), (breakpoint_locus_right, 209), c = 'blue', alpha = 0.5) #noush
-            plt.axline((0, breakpoint_locus_right), (209, breakpoint_locus_right), c = 'blue', alpha = 0.5) #noush
+            plt.axline((breakpoint_locus_right, 0), (breakpoint_locus_right, 209), c = 'blue', alpha = 0.5)
+            plt.axline((0, breakpoint_locus_right), (209, breakpoint_locus_right), c = 'blue', alpha = 0.5)
         # Generate tick label text
         ticks_label = self.rescale_coordinates(display_ticks, self.start_pos)
         plt.yticks(current_ticks, ticks_label)
