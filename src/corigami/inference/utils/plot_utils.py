@@ -56,7 +56,7 @@ class MatrixPlot:
         plt.savefig(f'{self.save_path}/imgs/{self.chr_name}_{self.start_pos}.png', bbox_inches = 'tight')
         plt.close()
         np.save(f'{self.save_path}/npy/{self.chr_name}_{self.start_pos}', self.image)
-
+        
 #for plotting simple junctions as defined in editing.py
 #added by Iraj, m-ski lab, NYGC
 #
@@ -93,7 +93,12 @@ class MatrixPlotJunction(MatrixPlot):
 		left_lims = [left_bp/mb - left_or*window*bploc/mb,left_bp/mb][::left_or]
 		right_lims = [right_bp/mb,right_bp/mb + right_or*window*(1-bploc)/mb][::right_or]
 
-		# general rationale: we have a breakpoint (which is by default centered in the simulated hi-c image). In general each side of the breakpoint is a different chromosome, and the whole width of the window is ~2Mb. Let's put ticks at each half megabase (equivalent to tickspacing = 50 since the units are in 10kb), so we should get max 4 ticks on the image. If the breakpoint is centered, we get two ticks on each side
+		# general rationale: we have a breakpoint (which is by default centered in 
+        # the simulated hi-c image). In general each side of the breakpoint is a 
+        # different chromosome, and the whole width of the window is ~2Mb. Let's 
+        # put ticks at each half megabase (equivalent to tickspacing = 50 since 
+        # the units are in 10kb), so we should get max 4 ticks on the image. 
+        # If the breakpoint is centered, we get two ticks on each side
 
 		breakpoint_locus = window*bploc/(somefloat*rescaleval) # position of the breakpoint in the window in units of 50kb
 		if self.show_line:
@@ -121,6 +126,66 @@ class MatrixPlotJunction(MatrixPlot):
         	plt.savefig(f'{self.save_path}/imgs/{self.chr_name}_{self.left_segm_coords[2]}_junc_{self.right_segm_coords[2]}.png', bbox_inches = 'tight')
         	plt.close()
         	np.save(f'{self.save_path}/npy/{self.chr_name}_{self.left_segm_coords[2]}_junc_{self.right_segm_coords[2]}.png', self.image)
+
+## plotting insertions. done by AJ 07/2024
+
+class MatrixPlotInsertion(MatrixPlot):
+    def __init__(self, output_path, image, prefix, celltype, chr_name, start_pos, ins_site, deletion_width, ins_chrom, padding_type, show_deletion_line = False):
+        super().__init__(output_path, image, prefix, celltype, chr_name, start_pos)
+
+        self.insertion_start = ins_site
+        self.insertion_width = deletion_width
+        self.show_insertion_lines = show_deletion_line
+        self.padding_type = padding_type
+        self.ins_chrom = ins_chrom
+
+    def reformat_ticks(self, plt):
+        # Rescale tick labels
+        breakpoint_start = (self.insertion_start - self.start_pos) / 10000 
+        breakpoint_end = (self.insertion_start - self.start_pos + self.insertion_width) / 10000 
+        print(f'Breakpoints = {breakpoint_start}, {breakpoint_end}')
+
+        # Used for generating ticks until the end of the window
+        total_window_size = (self.insertion_width + 2097152 ) / 10000
+
+        # Generate ticks before and after breakpoints
+        before_ticks = np.arange(0, breakpoint_start - 50, 50) / 0.8192
+        print(f'Before ticks = {before_ticks}')
+        after_ticks = (np.arange((breakpoint_end // 50 + 2) * 50, total_window_size, 50) - self.insertion_width / 10000) / 0.8192
+        print(f'After ticks = {after_ticks}')
+
+        breakpoint_locus_left = breakpoint_start / 0.8192
+        breakpoint_locus_right = breakpoint_end / 0.8192
+
+        print(f"Left and right locus: {breakpoint_locus_left}, {breakpoint_locus_right}")
+        
+        # Actual coordinates for each tick
+        current_ticks = np.append(before_ticks, after_ticks)
+        current_ticks = np.append(current_ticks, breakpoint_start / 0.8192)
+
+        # Genomic coordinates used for display location after insertion
+        display_ticks = np.append(before_ticks, after_ticks + self.insertion_width / 10000 / 0.8192)
+        display_ticks = np.append(display_ticks, breakpoint_start / 0.8192)
+        if self.show_insertion_lines:
+            plt.axline((breakpoint_locus_left, 0), (breakpoint_locus_left, 209), c = 'blue', alpha = 0.5)
+            plt.axline((0, breakpoint_locus_left), (209, breakpoint_locus_left), c = 'blue', alpha = 0.5)
+            plt.axline((breakpoint_locus_right, 0), (breakpoint_locus_right, 209), c = 'blue', alpha = 0.5) #noush
+            plt.axline((0, breakpoint_locus_right), (209, breakpoint_locus_right), c = 'blue', alpha = 0.5) #noush
+        # Generate tick label text
+        ticks_label = self.rescale_coordinates(display_ticks, self.start_pos)
+        plt.yticks(current_ticks, ticks_label)
+        ticks_label[-1] = f"{(self.insertion_start / 1000000):.2f}({(self.insertion_start + self.insertion_width) / 1000000:.2f})"
+        plt.xticks(current_ticks, ticks_label)
+        # Format labels
+        plt.ylabel('Genomic position (Mb)')
+        #plt.xlabel(f'Chr{self.chr_name.replace("chr", "")}: {self.start_pos} - {self.insertion_start} and {self.insertion_start + self.insertion_width} - {end_pos} ')
+        plt.xlabel(f'Chr{self.chr_name.replace("chr", "")} locus; {self.insertion_start}-{self.insertion_start + self.insertion_width} inserted from {self.ins_chrom}')
+        self.save_data(plt)
+
+    def save_data(self, plt):
+        plt.savefig(f'{self.save_path}/imgs/{self.chr_name}_{self.start_pos}_ins_{self.insertion_start}_{self.insertion_width}_padding_{self.padding_type}.png', bbox_inches = 'tight')
+        plt.close()
+        np.save(f'{self.save_path}/npy/{self.chr_name}_{self.start_pos}_ins_{self.insertion_start}_{self.insertion_width}_padding_{self.padding_type}', self.image)
 
 
 class MatrixPlotDeletion(MatrixPlot):
