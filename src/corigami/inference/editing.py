@@ -45,13 +45,29 @@ def main():
                         action = 'store_true',
                         help='Remove the line showing deletion site (default: %(default)s)')
 
+    parser.add_argument('--sv-type', dest='sv_type', type=str, default="deletion")
+    # Insertion related params
+    parser.add_argument('--insertion-site',dest='ins_site', type=int)
+    parser.add_argument('--insertion-source-chrom', dest='ins_chrom')
+
     args = parser.parse_args(args=None if sys.argv[1:] else ['--help'])
-    single_deletion(args.output_path, args.celltype, args.chr_name, args.start, 
-                    args.deletion_start, args.deletion_width, 
-                    args.model_path,
-                    args.seq_path, args.ctcf_path, args.atac_path, 
-                    show_deletion_line = not args.hide_deletion_line,
-                    end_padding_type = args.end_padding_type)
+
+    if args.sv_type.lower() == "deletion":
+        single_deletion(args.output_path, args.celltype, args.chr_name, args.start, 
+                        args.deletion_start, args.deletion_width, 
+                        args.model_path,
+                        args.seq_path, args.ctcf_path, args.atac_path, 
+                        show_deletion_line = not args.hide_deletion_line,
+                        end_padding_type = args.end_padding_type)
+    if args.sv_type.lower() == "insertion":
+        print("Insertion selected ... ")
+        single_insertion(args.output_path, args.celltype, args.chr_name, args.start, 
+                        args.deletion_start, args.deletion_width, 
+                        args.model_path,
+                        args.seq_path, args.ctcf_path, args.atac_path,
+                        args.ins_site, args.ins_chrom,
+                        show_deletion_line = not args.hide_deletion_line,
+                        end_padding_type = args.end_padding_type)
 
 def single_deletion(output_path, celltype, chr_name, start, deletion_start, deletion_width, model_path, seq_path, ctcf_path, atac_path, show_deletion_line = True, end_padding_type = 'zero'):
 
@@ -98,6 +114,35 @@ def delete(start, end, seq, ctcf, atac, window = 2097152):
     ctcf = np.delete(ctcf, np.s_[start:end])
     atac = np.delete(atac, np.s_[start:end])
     return seq[:window], ctcf[:window], atac[:window]
+
+
+def single_insertion(output_path, celltype, chr_name, start, deletion_start, deletion_width, model_path, seq_path, ctcf_path, atac_path, 
+ins_site, ins_chrom, show_deletion_line = True, end_padding_type = 'zero'):
+    """Replace deletion with insertion. Just add an extra parameter detailing which function to call. Should be equivalent otherwise"""
+    window = 2097152 - deletion_width ## carrying over. i think it has to do with bits.
+    hWindow = window // 2
+    left_edge = ins_site - (deletion_width // 2 ) - hWindow ## not sure if this works. we'll see
+    right_edge = ins_site + (deletion_width // 2 ) + hWindow
+    ins_seq, ins_ctcf, ins_atac = infer.load_region(ins_chrom, deletion_start, seq_path, ctcf_path, atac_path, window = deletion_width)
+    left_seq, left_ctcf, left_atac = infer.load_region(chr_name, left_edge, seq_path, ctcf_path, atac_path, window=hWindow)
+    right_seq, right_ctcf, right_atac = infer.load_region(chr_name, right_edge, seq_path, ctcf_path, atac_path, window=hWindow)
+
+    ## join the inputs:
+    seq_region = np.concatenate((left_seq,ins_seq,right_seq))
+    atac_region = np.concatenate((left_atac,ins_atac,right_atac))
+    ctcf_region = np.concatenate((left_ctcf,ins_ctcf,right_ctcf))
+
+    # Prediction
+    pred = infer.prediction(seq_region, ctcf_region, atac_region, model_path)
+    print("Insertion stuff done ... plotting now")
+    # # Initialize plotting class
+    plot = plot_utils.MatrixPlotInsertion(output_path, pred, 'insertion', 
+            celltype, chr_name, start, ins_site, deletion_width, ins_chrom,
+            padding_type = end_padding_type,
+            show_deletion_line = show_deletion_line)
+    
+    plot.plot()
+    print("Plotted ??")
 
 # A simple junction between two chromosomes
 # Added by: Iraj , m-ski lab
