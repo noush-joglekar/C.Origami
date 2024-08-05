@@ -67,7 +67,7 @@ def main():
                         args.model_path,
                         args.seq_path, args.ctcf_path, args.atac_path,
                         args.ins_site, args.ins_chrom,
-                        show_deletion_line = not args.hide_deletion_line,
+                        show_insertion_lines = not args.hide_deletion_line,
                         end_padding_type = args.end_padding_type)
 
 def single_deletion(output_path, celltype, chr_name, start, deletion_start, deletion_width, model_path, seq_path, ctcf_path, atac_path, show_deletion_line = True, end_padding_type = 'zero'):
@@ -118,7 +118,7 @@ def delete(start, end, seq, ctcf, atac, window = 2097152):
 
 
 def single_insertion(output_path, celltype, chr_name, start, insertion_start, insertion_width, model_path, seq_path, ctcf_path, atac_path, 
-ins_site, ins_chrom, show_deletion_line = True, end_padding_type = 'zero'):
+ins_site, ins_chrom, show_insertion_lines = True, end_padding_type = 'zero'):
     """Replace deletion with insertion. Just add an extra parameter detailing which function to call. Should be equivalent otherwise"""
     window = 2097152 - insertion_width ## carrying over. i think it has to do with bits.
     hWindow = window // 2
@@ -140,7 +140,7 @@ ins_site, ins_chrom, show_deletion_line = True, end_padding_type = 'zero'):
     plot = plot_utils.MatrixPlotInsertion(output_path, pred, 'insertion', 
             celltype, chr_name, start, insertion_start, insertion_width, ins_chrom,
             padding_type = end_padding_type,
-            show_deletion_line = show_deletion_line)
+            show_insertion_lines = show_insertion_lines)
     
     plot.plot()
     print("Plotted ??")
