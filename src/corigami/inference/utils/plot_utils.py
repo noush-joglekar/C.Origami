@@ -130,19 +130,21 @@ class MatrixPlotJunction(MatrixPlot):
 ## plotting insertions. done by AJ 07/2024
 
 class MatrixPlotInsertion(MatrixPlot):
-    def __init__(self, output_path, image, prefix, celltype, chr_name, start_pos, ins_site, deletion_width, ins_chrom, padding_type, show_deletion_line = False):
+    def __init__(self, output_path, image, prefix, celltype, chr_name, start_pos, insertion_start, 
+    insertion_width, ins_chrom, padding_type, show_insertion_lines = False):
         super().__init__(output_path, image, prefix, celltype, chr_name, start_pos)
 
-        self.insertion_start = ins_site
-        self.insertion_width = deletion_width
-        self.show_insertion_lines = show_deletion_line
+        self.insertion_start = insertion_start
+        self.insertion_width = insertion_width
+        self.show_insertion_lines = show_insertion_lines
         self.padding_type = padding_type
         self.ins_chrom = ins_chrom
 
     def reformat_ticks(self, plt):
-        """Noush: not fully sure how this is working but seems to be."""
+        """Noush: Okay I know the problem. The OG coords need to be shown otherwise it looks dumb + hard to track"""
         # Rescale tick labels
-        breakpoint_start = (self.insertion_start - self.start_pos) / 10000 
+
+        breakpoint_start = (self.insertion_start - self.start_pos) / 10000 ## maybe we remove the start pos. its weird
         breakpoint_end = (self.insertion_start - self.start_pos + self.insertion_width) / 10000 
 
         # Used for generating ticks until the end of the window
@@ -174,14 +176,14 @@ class MatrixPlotInsertion(MatrixPlot):
         plt.xticks(current_ticks, ticks_label)
         # Format labels
         plt.ylabel('Genomic position (Mb)')
-        #plt.xlabel(f'Chr{self.chr_name.replace("chr", "")}: {self.start_pos} - {self.insertion_start} and {self.insertion_start + self.insertion_width} - {end_pos} ')
-        plt.xlabel(f'Chr{self.chr_name.replace("chr", "")} locus; {self.insertion_start}-{self.insertion_start + self.insertion_width} inserted from {self.ins_chrom}')
+        
+        plt.xlabel(f'Chr{self.chr_name.replace("chr", "")} locus; {self.insertion_start/1000000}-{(self.insertion_start + self.insertion_width) / 1000000} (MB) inserted from {self.ins_chrom}')
         self.save_data(plt)
 
     def save_data(self, plt):
-        plt.savefig(f'{self.save_path}/imgs/{self.chr_name}_{self.start_pos}_ins_{self.insertion_start}_{self.insertion_width}_padding_{self.padding_type}.png', bbox_inches = 'tight')
+        plt.savefig(f'{self.save_path}/imgs/{self.chr_name}_{self.start_pos}_insFrom{self.ins_chrom}_{self.insertion_width}_at{self.insertion_start}_padding_{self.padding_type}.png', bbox_inches = 'tight')
         plt.close()
-        np.save(f'{self.save_path}/npy/{self.chr_name}_{self.start_pos}_ins_{self.insertion_start}_{self.insertion_width}_padding_{self.padding_type}', self.image)
+        np.save(f'{self.save_path}/npy/{self.chr_name}_{self.start_pos}_insFrom{self.ins_chrom}_{self.insertion_width}_at{self.insertion_start}_padding_{self.padding_type}', self.image)
 
 
 class MatrixPlotDeletion(MatrixPlot):
